@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* 解决 Ant Design 按钮背景透明问题 */
+@layer base {
+  button, [type='button'], [type='reset'], [type='submit'] {
+    background-color: transparent;
+  }
+}
