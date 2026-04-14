@@ -1,6 +1,6 @@
 /** @type {import('tailwind.config').Config} */
 export default {
-  // 必须加上这一行！告诉 Tailwind 通过类名控制暗黑模式
+  // [关键] 开启类名控制模式
   darkMode: 'class', 
   content: [
     "./index.html",
