@@ -27,7 +27,14 @@ const columns = [
 ];
 
 onMounted(async () => {
-  const data = await getNodeList();
-  nodes.value = data;
+  try {
+    const data = await getNodeList();
+    // 确保拿到的是数组，防止后端乱返回导致 table 崩溃
+    nodes.value = data || [];
+  } catch (error) {
+    // 拦截掉异常，防止 Vue 报 Unhandled error
+    // 注意：这里的 catch 不需要写 message.error，因为你的 src/utils/http.ts 拦截器里已经统一处理过错误弹窗了！
+    console.warn('节点列表获取失败，后端服务可能未启动:', error);
+  }
 });
 </script>
