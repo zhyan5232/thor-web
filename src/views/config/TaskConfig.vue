@@ -21,24 +21,41 @@
       <!-- 右侧内容 -->
       <div class="flex-1 flex flex-col min-h-0">
         <a-card class="flex-1 flex flex-col min-h-0" :bordered="false">
+          <!-- 任务组列表 - 参考老FEX样式 -->
           <template v-if="currentView === 'taskGroup'">
-            <div class="flex justify-between mb-3 px-1">
+            <div class="flex items-center justify-between mb-3 px-1">
               <div class="text-base font-medium">任务组列表 - {{ currentAppSystemName }}</div>
-              <a-button type="primary" size="small" @click="handleAddTaskGroup">
-                <template #icon><PlusOutlined /></template>
-                新增任务组
-              </a-button>
+              <div class="flex gap-2">
+                <a-button type="primary" size="small" @click="handleAddTaskGroup">
+                  <template #icon><PlusOutlined /></template>
+                  新增任务组
+                </a-button>
+              </div>
             </div>
-            <a-table :columns="taskGroupColumns" :data-source="taskGroupList" size="small" :pagination="false">
+
+            <a-table
+              :columns="taskGroupColumns"
+              :data-source="taskGroupList"
+              size="small"
+              :pagination="false"
+              row-key="id"
+            >
               <template #bodyCell="{ column, record }">
+                <template v-if="column.key === 'isTemplate'">
+                  <a-tag :color="record.isTemplate ? 'blue' : 'default'">
+                    {{ record.isTemplate ? '是' : '否' }}
+                  </a-tag>
+                </template>
                 <template v-if="column.key === 'status'">
-                  <a-tag :color="record.status === 'active' ? 'green' : 'red'">{{ record.status === 'active' ? '启用' : '停用' }}</a-tag>
+                  <a-tag :color="record.status === 'active' ? 'green' : 'red'">
+                    {{ record.status === 'active' ? '启用' : '停用' }}
+                  </a-tag>
                 </template>
                 <template v-if="column.key === 'action'">
                   <a-space>
                     <a @click="handleEditTaskGroup(record)">编辑</a>
                     <a @click="handleSelectTaskGroup(record)">进入任务</a>
-                    <a-popconfirm title="确定删除？" @confirm="handleDeleteTaskGroup(record)">
+                    <a-popconfirm title="确定删除该任务组吗？" @confirm="handleDeleteTaskGroup(record)">
                       <a class="text-red-500">删除</a>
                     </a-popconfirm>
                   </a-space>
@@ -47,6 +64,7 @@
             </a-table>
           </template>
 
+          <!-- 任务列表 -->
           <template v-else-if="currentView === 'task'">
             <div class="flex justify-between mb-3 px-1">
               <div class="text-base font-medium">任务列表 - {{ currentTaskGroupName }}</div>
@@ -66,7 +84,7 @@
                 <template v-if="column.key === 'action'">
                   <a-space>
                     <a @click="handleEditTask(record)">编辑</a>
-                    <a-popconfirm title="确定删除？" @confirm="handleDeleteTask(record)">
+                    <a-popconfirm title="确定删除该任务吗？" @confirm="handleDeleteTask(record)">
                       <a class="text-red-500">删除</a>
                     </a-popconfirm>
                   </a-space>
@@ -170,7 +188,6 @@
           </template>
         </a-table>
 
-        <!-- 参数表单 -->
         <a-card v-if="showParamForm" size="small" class="mb-3">
           <a-form layout="vertical">
             <a-row :gutter="12">
@@ -194,7 +211,6 @@
               </a-col>
             </a-row>
 
-            <!-- 常量类型：显示系统变量按钮 -->
             <a-row v-if="currentParam.paramType === '常量'" :gutter="12">
               <a-col :span="24">
                 <a-form-item label="参数值">
@@ -204,7 +220,6 @@
               </a-col>
             </a-row>
 
-            <!-- SQL类型 -->
             <a-row v-else :gutter="12">
               <a-col :span="12">
                 <a-form-item label="数据源">
@@ -246,24 +261,11 @@
       </div>
     </a-drawer>
 
-    <!-- 系统变量选择弹窗 -->
-    <a-modal
-      v-model:open="systemVarModalVisible"
-      title="参数值"
-      width="720"
-      @ok="confirmSystemVar"
-      ok-text="确定"
-      cancel-text="取消"
-    >
+    <!-- 系统变量弹窗 -->
+    <a-modal v-model:open="systemVarModalVisible" title="参数值" width="720" @ok="confirmSystemVar" ok-text="确定" cancel-text="取消">
       <div class="mb-3">
-        <a-input-search
-          v-model:value="systemVarSearch"
-          placeholder="变量名称"
-          enter-button="搜索"
-          @search="filterSystemVars"
-        />
+        <a-input-search v-model:value="systemVarSearch" placeholder="变量名称" enter-button="搜索" @search="filterSystemVars" />
       </div>
-
       <a-table
         :columns="systemVarColumns"
         :data-source="filteredSystemVars"
@@ -344,19 +346,23 @@ const currentView = ref<'taskGroup' | 'task' | ''>('');
 const currentAppSystemName = ref('');
 const currentTaskGroupName = ref('');
 
-// 任务组列表
+// 任务组列表 - 参考老FEX丰富字段
 const taskGroupList = ref<any[]>([
-  { id: 'tg-1', groupName: '2026_NEW_TEST', status: 'active' },
-  { id: 'tg-2', groupName: '默认任务组', status: 'active' }
+  { id: 'tg-1', groupCode: '2026_NEW_TEST', groupName: '2026_NEW_TEST', isTemplate: false, status: 'active', taskType: '发送文件', triggerType: '不自动触发' },
+  { id: 'tg-2', groupCode: 'DEFAULT', groupName: '默认任务组', isTemplate: false, status: 'active', taskType: '发送文件', triggerType: '不自动触发' },
 ]);
 
 // 任务列表
 const taskList = ref<any[]>([]);
 
-// 表格列
+// 任务组表格列 - 参考老FEX图2
 const taskGroupColumns = [
-  { title: '任务组名称', dataIndex: 'groupName', key: 'groupName' },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
+  { title: '任务组标识', dataIndex: 'groupCode', key: 'groupCode', width: 140 },
+  { title: '任务组名称', dataIndex: 'groupName', key: 'groupName', width: 180 },
+  { title: '是否配置模板', dataIndex: 'isTemplate', key: 'isTemplate', width: 120 },
+  { title: '任务组状态', dataIndex: 'status', key: 'status', width: 100 },
+  { title: '任务组类型', dataIndex: 'taskType', key: 'taskType', width: 120 },
+  { title: '触发方式', dataIndex: 'triggerType', key: 'triggerType', width: 120 },
   { title: '操作', key: 'action', width: 160 }
 ];
 
@@ -429,7 +435,7 @@ const resetTaskGroupWizard = () => {
   Object.assign(taskGroupForm, { id: '', groupCode: '', groupName: '', appSystemName: '', taskType: '发送文件', status: 'active', triggerType: '不自动触发', remark: '' });
 };
 
-// 打开新增任务组
+// 新增任务组
 const handleAddTaskGroup = () => {
   isEditTaskGroup.value = false;
   resetTaskGroupWizard();
@@ -535,9 +541,13 @@ const handleSubmitTaskGroup = () => {
   resetTaskGroupWizard();
 };
 
-// 其他方法
+// 删除任务组
 const handleDeleteTaskGroup = (record: any) => { taskGroupList.value = taskGroupList.value.filter(i => i.id !== record.id); };
+
+// 选择任务组
 const handleSelectTaskGroup = (record: any) => { currentView.value = 'task'; currentTaskGroupName.value = record.groupName; };
+
+// 任务相关
 const handleAddTask = () => { isEditTask.value = false; taskDrawerVisible.value = true; };
 const handleEditTask = (record: any) => { isEditTask.value = true; Object.assign(taskForm, record); taskDrawerVisible.value = true; };
 const handleDeleteTask = (record: any) => { taskList.value = taskList.value.filter(i => i.id !== record.id); };
