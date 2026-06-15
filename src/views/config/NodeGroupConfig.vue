@@ -61,12 +61,8 @@
       </template>
     </a-table>
 
-    <a-drawer
-      v-model:open="drawerVisible"
-      :title="isEdit ? '编辑节点组' : '新增节点组'"
-      width="620"
-      @close="resetForm"
-    >
+    <!-- 新增/编辑抽屉 -->
+    <a-drawer v-model:open="drawerVisible" :title="isEdit ? '编辑节点组' : '新增节点组'" width="620" @close="resetForm">
       <a-form :model="formState" :rules="rules" ref="formRef" layout="vertical">
         <a-form-item label="节点组名称" name="groupName">
           <a-input v-model:value="formState.groupName" placeholder="请输入节点组名称" />
@@ -76,17 +72,14 @@
           <a-textarea v-model:value="formState.description" :rows="3" placeholder="请输入描述" />
         </a-form-item>
 
-        <a-form-item label="包含节点" name="nodeIds">
-          <a-select
-            v-model:value="formState.nodeIds"
-            mode="multiple"
-            placeholder="请选择节点"
-            style="width: 100%"
-          >
-            <a-select-option v-for="node in availableNodes" :key="node.id" :value="node.id">
-              {{ node.nodeName }} ({{ node.nodeCode }})
-            </a-select-option>
-          </a-select>
+        <!-- 关联节点 -->
+        <a-form-item label="关联节点">
+          <div class="flex items-center gap-2">
+            <a-button @click="showNodeModal">关联节点</a-button>
+            <span v-if="formState.nodeIds.length > 0" class="text-sm text-gray-500">
+              已选择 {{ formState.nodeIds.length }} 个节点
+            </span>
+          </div>
         </a-form-item>
 
         <a-form-item label="状态" name="status">
@@ -101,6 +94,25 @@
         </div>
       </a-form>
     </a-drawer>
+
+    <!-- 关联节点弹窗 -->
+    <a-modal
+      v-model:open="nodeModalVisible"
+      title="关联节点"
+      width="520"
+      @ok="confirmNodeSelection"
+      @cancel="nodeModalVisible = false"
+    >
+      <div class="max-h-[400px] overflow-auto border rounded p-3">
+        <a-checkbox-group v-model:value="tempSelectedNodeIds" style="width: 100%">
+          <div v-for="node in availableNodes" :key="node.id" class="py-1.5 border-b last:border-b-0">
+            <a-checkbox :value="node.id">
+              {{ node.nodeName }} ({{ node.nodeCode }})
+            </a-checkbox>
+          </div>
+        </a-checkbox-group>
+      </div>
+    </a-modal>
   </div>
 </template>
 
@@ -128,7 +140,7 @@ interface NodeOption {
 const columns: TableColumnsType = [
   { title: '节点组名称', dataIndex: 'groupName', key: 'groupName', width: 200 },
   { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
-  { title: '包含节点', key: 'nodeCount', width: 140 },
+  { title: '关联节点', key: 'nodeCount', width: 140 },
   { title: '状态', key: 'status', width: 100 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '操作', key: 'action', width: 120, fixed: 'right' },
@@ -150,6 +162,10 @@ const formState = reactive({
   nodeIds: [] as number[],
   status: true,
 });
+
+// 临时选中节点（用于弹窗）
+const tempSelectedNodeIds = ref<number[]>([]);
+const nodeModalVisible = ref(false);
 
 const groupList = ref<NodeGroup[]>([]);
 
@@ -175,12 +191,24 @@ const rules = {
   groupName: [{ required: true, message: '请输入节点组名称' }],
 };
 
-// 根据 nodeIds 获取节点名称列表
+// 获取节点名称
 const getNodeNames = (nodeIds: number[]) => {
   if (!nodeIds || nodeIds.length === 0) return [];
   return nodeIds
     .map(id => availableNodes.value.find(n => n.id === id)?.nodeName)
     .filter(Boolean) as string[];
+};
+
+// 打开关联节点弹窗
+const showNodeModal = () => {
+  tempSelectedNodeIds.value = [...formState.nodeIds];
+  nodeModalVisible.value = true;
+};
+
+// 确认关联节点
+const confirmNodeSelection = () => {
+  formState.nodeIds = [...tempSelectedNodeIds.value];
+  nodeModalVisible.value = false;
 };
 
 const loadData = () => {
