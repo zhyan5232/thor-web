@@ -21,7 +21,6 @@
       <!-- 右侧内容 -->
       <div class="flex-1 flex flex-col min-h-0">
         <a-card class="flex-1 flex flex-col min-h-0" :bordered="false">
-          <!-- 任务组列表 - 参考老FEX样式 -->
           <template v-if="currentView === 'taskGroup'">
             <div class="flex items-center justify-between mb-3 px-1">
               <div class="text-base font-medium">任务组列表 - {{ currentAppSystemName }}</div>
@@ -42,14 +41,10 @@
             >
               <template #bodyCell="{ column, record }">
                 <template v-if="column.key === 'isTemplate'">
-                  <a-tag :color="record.isTemplate ? 'blue' : 'default'">
-                    {{ record.isTemplate ? '是' : '否' }}
-                  </a-tag>
+                  <a-tag :color="record.isTemplate ? 'blue' : 'default'">{{ record.isTemplate ? '是' : '否' }}</a-tag>
                 </template>
                 <template v-if="column.key === 'status'">
-                  <a-tag :color="record.status === 'active' ? 'green' : 'red'">
-                    {{ record.status === 'active' ? '启用' : '停用' }}
-                  </a-tag>
+                  <a-tag :color="record.status === 'active' ? 'green' : 'red'">{{ record.status === 'active' ? '启用' : '停用' }}</a-tag>
                 </template>
                 <template v-if="column.key === 'action'">
                   <a-space>
@@ -64,7 +59,6 @@
             </a-table>
           </template>
 
-          <!-- 任务列表 -->
           <template v-else-if="currentView === 'task'">
             <div class="flex justify-between mb-3 px-1">
               <div class="text-base font-medium">任务列表 - {{ currentTaskGroupName }}</div>
@@ -149,8 +143,8 @@
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item label="自动触发方式">
-                <a-select v-model:value="taskGroupForm.triggerType">
+              <a-form-item label="自动触发方式" required>
+                <a-select v-model:value="taskGroupForm.triggerType" @change="onTriggerTypeChange">
                   <a-select-option value="不自动触发">不自动触发</a-select-option>
                   <a-select-option value="触发器触发">触发器触发</a-select-option>
                   <a-select-option value="依赖触发">依赖触发</a-select-option>
@@ -158,6 +152,12 @@
               </a-form-item>
             </a-col>
           </a-row>
+
+          <!-- 触发器触发时显示选择触发器 -->
+          <a-form-item v-if="taskGroupForm.triggerType === '触发器触发'" label="触发器" required>
+            <a-input v-model:value="taskGroupForm.triggerName" placeholder="请选择触发器" readonly style="width: 70%" />
+            <a-button style="margin-left: 8px" @click="openTriggerModal">选择触发器</a-button>
+          </a-form-item>
 
           <a-form-item label="备注">
             <a-textarea v-model:value="taskGroupForm.remark" :rows="3" />
@@ -276,6 +276,21 @@
       />
     </a-modal>
 
+    <!-- 触发器选择弹窗 -->
+    <a-modal v-model:open="triggerModalVisible" title="请选择触发器" width="600" @ok="confirmTrigger" ok-text="确定" cancel-text="取消">
+      <div class="mb-3">
+        <a-input-search v-model:value="triggerSearch" placeholder="触发器名称" enter-button="搜索" @search="filterTriggers" />
+      </div>
+      <a-table
+        :columns="triggerColumns"
+        :data-source="filteredTriggers"
+        :row-selection="{ type: 'radio', selectedRowKeys: selectedTriggerKeys, onChange: onTriggerSelect }"
+        :pagination="{ pageSize: 8 }"
+        size="small"
+        row-key="id"
+      />
+    </a-modal>
+
     <!-- 任务 Drawer -->
     <a-drawer v-model:open="taskDrawerVisible" title="新增/编辑任务" width="720">
       <a-form :model="taskForm" layout="vertical">
@@ -346,7 +361,7 @@ const currentView = ref<'taskGroup' | 'task' | ''>('');
 const currentAppSystemName = ref('');
 const currentTaskGroupName = ref('');
 
-// 任务组列表 - 参考老FEX丰富字段
+// 任务组列表
 const taskGroupList = ref<any[]>([
   { id: 'tg-1', groupCode: '2026_NEW_TEST', groupName: '2026_NEW_TEST', isTemplate: false, status: 'active', taskType: '发送文件', triggerType: '不自动触发' },
   { id: 'tg-2', groupCode: 'DEFAULT', groupName: '默认任务组', isTemplate: false, status: 'active', taskType: '发送文件', triggerType: '不自动触发' },
@@ -355,7 +370,7 @@ const taskGroupList = ref<any[]>([
 // 任务列表
 const taskList = ref<any[]>([]);
 
-// 任务组表格列 - 参考老FEX图2
+// 任务组表格列
 const taskGroupColumns = [
   { title: '任务组标识', dataIndex: 'groupCode', key: 'groupCode', width: 140 },
   { title: '任务组名称', dataIndex: 'groupName', key: 'groupName', width: 180 },
@@ -382,7 +397,7 @@ const currentStep = ref(0);
 const showParamForm = ref(false);
 
 // 任务组基本信息
-const taskGroupForm = reactive({ id: '', groupCode: '', groupName: '', appSystemName: '', taskType: '发送文件', status: 'active', triggerType: '不自动触发', remark: '' });
+const taskGroupForm = reactive({ id: '', groupCode: '', groupName: '', appSystemName: '', taskType: '发送文件', status: 'active', triggerType: '不自动触发', triggerName: '', remark: '' });
 
 // 参数列表
 const paramList = ref<any[]>([]);
@@ -422,6 +437,31 @@ const systemVarColumns = [
   { title: '备注', dataIndex: 'remark', key: 'remark' }
 ];
 
+// 触发器弹窗
+const triggerModalVisible = ref(false);
+const triggerSearch = ref('');
+const selectedTriggerKeys = ref<any[]>([]);
+const triggers = ref([
+  { id: 1, name: 'aa', remark: '每天01:10:00执行' },
+  { id: 2, name: '每天00:10启动', remark: '每天00:10:00执行' },
+  { id: 3, name: '每天21:00:00执行', remark: '每天21:00:00执行' },
+  { id: 4, name: '月末00:10:00执行', remark: '月末00:10:00执行' },
+  { id: 5, name: '每天16:00:00执行', remark: '每天16:00:00执行' },
+  { id: 6, name: 'day', remark: '每天00:30:00执行' },
+  { id: 7, name: '每天06:00:00执行', remark: '每天06:00:00执行' },
+]);
+
+const filteredTriggers = computed(() => {
+  if (!triggerSearch.value) return triggers.value;
+  const keyword = triggerSearch.value.toLowerCase();
+  return triggers.value.filter(t => t.name.toLowerCase().includes(keyword));
+});
+
+const triggerColumns = [
+  { title: '触发器名称', dataIndex: 'name', key: 'name' },
+  { title: '备注', dataIndex: 'remark', key: 'remark' }
+];
+
 // 任务表单
 const taskDrawerVisible = ref(false);
 const isEditTask = ref(false);
@@ -432,7 +472,7 @@ const resetTaskGroupWizard = () => {
   currentStep.value = 0;
   showParamForm.value = false;
   paramList.value = [];
-  Object.assign(taskGroupForm, { id: '', groupCode: '', groupName: '', appSystemName: '', taskType: '发送文件', status: 'active', triggerType: '不自动触发', remark: '' });
+  Object.assign(taskGroupForm, { id: '', groupCode: '', groupName: '', appSystemName: '', taskType: '发送文件', status: 'active', triggerType: '不自动触发', triggerName: '', remark: '' });
 };
 
 // 新增任务组
@@ -459,6 +499,42 @@ const goToParamStep = () => {
   }
   currentStep.value = 1;
 };
+
+// 触发方式变化时清空触发器
+const onTriggerTypeChange = (val: string) => {
+  if (val !== '触发器触发') {
+    taskGroupForm.triggerName = '';
+  }
+};
+
+// 打开触发器弹窗
+const openTriggerModal = () => {
+  triggerSearch.value = '';
+  selectedTriggerKeys.value = [];
+  triggerModalVisible.value = true;
+};
+
+// 选择触发器
+const onTriggerSelect = (keys: any[]) => {
+  selectedTriggerKeys.value = keys;
+};
+
+// 确认选择触发器
+const confirmTrigger = () => {
+  if (selectedTriggerKeys.value.length === 0) {
+    message.warning('请选择一个触发器');
+    return;
+  }
+  const selected = triggers.value.find(t => t.id === selectedTriggerKeys.value[0]);
+  if (selected) {
+    taskGroupForm.triggerName = selected.name;
+    message.success(`已选择触发器: ${selected.name}`);
+  }
+  triggerModalVisible.value = false;
+};
+
+// 过滤触发器
+const filterTriggers = () => {};
 
 // 参数类型切换
 const onParamTypeChange = (val: string) => {
