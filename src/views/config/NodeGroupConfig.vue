@@ -24,7 +24,19 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'nodeCount'">
-          {{ record.nodeIds?.length || 0 }} 个节点
+          <a-popover placement="right" trigger="hover">
+            <template #content>
+              <div v-if="getNodeNames(record.nodeIds).length > 0" class="min-w-[180px]">
+                <div v-for="name in getNodeNames(record.nodeIds)" :key="name" class="py-0.5">
+                  {{ name }}
+                </div>
+              </div>
+              <div v-else class="text-gray-400">暂无节点</div>
+            </template>
+            <span class="cursor-pointer text-blue-600 hover:underline">
+              {{ record.nodeIds?.length || 0 }} 个节点
+            </span>
+          </a-popover>
         </template>
 
         <template v-if="column.key === 'status'">
@@ -116,7 +128,7 @@ interface NodeOption {
 const columns: TableColumnsType = [
   { title: '节点组名称', dataIndex: 'groupName', key: 'groupName', width: 200 },
   { title: '描述', dataIndex: 'description', key: 'description', ellipsis: true },
-  { title: '包含节点', key: 'nodeCount', width: 120 },
+  { title: '包含节点', key: 'nodeCount', width: 140 },
   { title: '状态', key: 'status', width: 100 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '操作', key: 'action', width: 120, fixed: 'right' },
@@ -142,9 +154,9 @@ const formState = reactive({
 const groupList = ref<NodeGroup[]>([]);
 
 const availableNodes = ref<NodeOption[]>([
-  { id: 1, nodeCode: 'NODE001', nodeName: '中心节点-北京' },
-  { id: 2, nodeCode: 'NODE002', nodeName: '执行节点-上海' },
-  { id: 3, nodeCode: 'NODE003', nodeName: '执行节点-广州' },
+  { id: 1, nodeCode: 'NODE001', nodeName: '核心交易中心节点' },
+  { id: 2, nodeCode: 'NODE002', nodeName: '影像归档执行节点01' },
+  { id: 3, nodeCode: 'NODE003', nodeName: '风控审批执行节点01' },
 ]);
 
 const pagination = reactive({
@@ -161,6 +173,14 @@ const filteredList = computed(() => {
 
 const rules = {
   groupName: [{ required: true, message: '请输入节点组名称' }],
+};
+
+// 根据 nodeIds 获取节点名称列表
+const getNodeNames = (nodeIds: number[]) => {
+  if (!nodeIds || nodeIds.length === 0) return [];
+  return nodeIds
+    .map(id => availableNodes.value.find(n => n.id === id)?.nodeName)
+    .filter(Boolean) as string[];
 };
 
 const loadData = () => {
