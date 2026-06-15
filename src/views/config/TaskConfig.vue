@@ -6,7 +6,7 @@
     </div>
 
     <div class="flex gap-4 flex-1 min-h-0">
-      <!-- 左侧树形结构 -->
+      <!-- 左侧树形结构（与应用系统管理保持一致） -->
       <div class="w-64 flex-shrink-0">
         <a-card title="应用系统 / 任务组" :bordered="false" class="h-full">
           <a-tree
@@ -21,9 +21,8 @@
 
       <!-- 右侧内容区 -->
       <div class="flex-1 flex flex-col min-h-0">
-        <!-- 根据选择显示不同内容 -->
         <a-card class="flex-1 flex flex-col min-h-0" :bordered="false">
-          <!-- 显示任务组列表 -->
+          <!-- 任务组列表 -->
           <template v-if="currentView === 'taskGroup'">
             <div class="flex items-center justify-between mb-3 px-1">
               <div class="text-base font-medium">任务组列表 - {{ currentAppSystemName }}</div>
@@ -59,7 +58,7 @@
             </a-table>
           </template>
 
-          <!-- 显示任务列表 -->
+          <!-- 任务列表 -->
           <template v-else-if="currentView === 'task'">
             <div class="flex items-center justify-between mb-3 px-1">
               <div class="text-base font-medium">任务列表 - {{ currentTaskGroupName }}</div>
@@ -136,7 +135,7 @@
       </div>
     </a-drawer>
 
-    <!-- 新增/编辑任务 Drawer (简化版) -->
+    <!-- 新增/编辑任务 Drawer -->
     <a-drawer v-model:open="taskDrawerVisible" :title="isEditTask ? '编辑任务' : '新增任务'" width="720">
       <a-form :model="taskForm" layout="vertical">
         <a-row :gutter="16">
@@ -197,27 +196,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive } from 'vue';
 import { message } from 'ant-design-vue';
 import { PlusOutlined } from '@ant-design/icons-vue';
 
-// 树形数据
-const treeData = ref([
-  {
-    key: 'app-1',
-    title: '张家口银行',
-    children: [
-      { key: 'tg-1', title: '2026_NEW_TEST' },
-      { key: 'tg-2', title: '2023 nj' },
-      { key: 'tg-3', title: '2024 nj' },
-    ]
-  },
-  {
-    key: 'app-2',
-    title: 'ODS',
-    children: []
-  }
+// 从应用系统管理同步的应用系统数据（后续可改为从 AppSystemManage 共享）
+const appSystems = ref([
+  { id: 1, appName: '张家口银行', appCode: 'ZJKYH' },
+  { id: 2, appName: 'ODS', appCode: 'ODS' },
+  { id: 3, appName: '核心交易系统', appCode: 'CORE' },
 ]);
+
+// 构建树形数据（应用系统 + 任务组）
+const treeData = ref(
+  appSystems.value.map(app => ({
+    key: `app-${app.id}`,
+    title: app.appName,
+    children: [
+      { key: `tg-${app.id}-1`, title: '2026_NEW_TEST' },
+      { key: `tg-${app.id}-2`, title: '默认任务组' },
+    ]
+  }))
+);
 
 // 状态
 const selectedKeys = ref<string[]>([]);
@@ -229,7 +229,7 @@ const currentTaskGroupId = ref('');
 // 任务组列表
 const taskGroupList = ref<any[]>([
   { id: 'tg-1', groupName: '2026_NEW_TEST', status: 'active', remark: '' },
-  { id: 'tg-2', groupName: '2023 nj', status: 'active', remark: '' },
+  { id: 'tg-2', groupName: '默认任务组', status: 'active', remark: '' },
 ]);
 
 // 任务列表
@@ -269,21 +269,17 @@ const handleTreeSelect = (keys: string[], info: any) => {
   const key = keys[0];
 
   if (key.startsWith('app-')) {
-    // 选择了应用系统
     currentView.value = 'taskGroup';
     currentAppSystemName.value = info.node.title;
     currentTaskGroupName.value = '';
-    // 加载该应用系统下的任务组
     taskGroupList.value = [
       { id: 'tg-1', groupName: '2026_NEW_TEST', status: 'active', remark: '' },
-      { id: 'tg-2', groupName: '2023 nj', status: 'active', remark: '' },
+      { id: 'tg-2', groupName: '默认任务组', status: 'active', remark: '' },
     ];
   } else if (key.startsWith('tg-')) {
-    // 选择了任务组
     currentView.value = 'task';
     currentTaskGroupName.value = info.node.title;
     currentTaskGroupId.value = key;
-    // 加载该任务组下的任务
     taskList.value = [
       { id: 1, taskCode: 'S0110', taskName: 'S0110', status: 'active', transType: '一对一', priority: 4 },
       { id: 2, taskCode: 'S0110_OK', taskName: 'S0110_OK', status: 'active', transType: '一对一', priority: 4 },
@@ -373,7 +369,6 @@ const handleSubmitTask = () => {
 const handleBatchImport = (info: any) => {
   if (info.file.status === 'done') {
     message.success(`${info.file.name} 导入成功（模拟）`);
-    // 这里可以后续接入真实解析逻辑
   }
 };
 
