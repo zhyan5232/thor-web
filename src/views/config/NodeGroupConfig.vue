@@ -33,7 +33,10 @@
               </div>
               <div v-else class="text-gray-400">暂无节点</div>
             </template>
-            <span class="cursor-pointer text-blue-600 hover:underline">
+            <span 
+              class="cursor-pointer text-blue-600 hover:underline hover:text-blue-700"
+              @click.stop="openNodeModalFromTable(record)"
+            >
               {{ record.nodeIds?.length || 0 }} 个节点
             </span>
           </a-popover>
@@ -42,7 +45,7 @@
         <template v-if="column.key === 'status'">
           <a-tag :color="record.status === 'active' ? 'green' : 'red'">
             {{ record.status === 'active' ? '启用' : '禁用' }}
-          </a-tag>
+            </a-tag>
         </template>
 
         <template v-if="column.key === 'action'">
@@ -95,7 +98,7 @@
       </a-form>
     </a-drawer>
 
-    <!-- 关联节点弹窗（美化竖版样式） -->
+    <!-- 关联节点弹窗 -->
     <a-modal
       v-model:open="nodeModalVisible"
       title="关联节点"
@@ -180,6 +183,9 @@ const formState = reactive({
 const tempSelectedNodeIds = ref<number[]>([]);
 const nodeModalVisible = ref(false);
 
+// 当前正在从表格编辑的节点组
+let editingGroupFromTable: NodeGroup | null = null;
+
 const groupList = ref<NodeGroup[]>([]);
 
 const availableNodes = ref<NodeOption[]>([
@@ -222,15 +228,33 @@ const toggleNodeSelection = (nodeId: number) => {
   }
 };
 
-// 打开关联节点弹窗
+// 打开关联节点弹窗（来自抽屉）
 const showNodeModal = () => {
+  editingGroupFromTable = null;
   tempSelectedNodeIds.value = [...formState.nodeIds];
+  nodeModalVisible.value = true;
+};
+
+// 从表格点击打开关联节点弹窗
+const openNodeModalFromTable = (record: NodeGroup) => {
+  editingGroupFromTable = record;
+  tempSelectedNodeIds.value = [...record.nodeIds];
   nodeModalVisible.value = true;
 };
 
 // 确认关联节点
 const confirmNodeSelection = () => {
-  formState.nodeIds = [...tempSelectedNodeIds.value];
+  if (editingGroupFromTable) {
+    // 来自表格点击
+    const index = groupList.value.findIndex(item => item.id === editingGroupFromTable!.id);
+    if (index > -1) {
+      groupList.value[index].nodeIds = [...tempSelectedNodeIds.value];
+    }
+    editingGroupFromTable = null;
+  } else {
+    // 来自抽屉
+    formState.nodeIds = [...tempSelectedNodeIds.value];
+  }
   nodeModalVisible.value = false;
 };
 
