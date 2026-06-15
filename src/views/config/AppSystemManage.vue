@@ -70,7 +70,7 @@ import { message } from 'ant-design-vue';
 import { PlusOutlined } from '@ant-design/icons-vue';
 import axios from 'axios';
 
-// 后端接口基础地址（后续可提取到配置文件）
+// 后端接口基础地址
 const API_BASE = 'http://localhost:8080/api';
 
 // 表格列定义
@@ -104,7 +104,8 @@ const fetchAppSystemList = async () => {
   loading.value = true;
   try {
     const res = await axios.get(`${API_BASE}/app-system/list`);
-    appSystemList.value = res.data.data || [];
+    // 修复点：后端返回的是 result 而不是 data
+    appSystemList.value = res.data.result || [];
   } catch (error) {
     message.error('获取应用系统列表失败');
     console.error(error);
@@ -149,16 +150,14 @@ const handleSubmit = async () => {
 
   try {
     if (isEdit.value && currentId.value) {
-      // 编辑
       await axios.put(`${API_BASE}/app-system/${currentId.value}`, form);
       message.success('编辑成功');
     } else {
-      // 新增
       await axios.post(`${API_BASE}/app-system`, form);
       message.success('新增成功');
     }
     drawerVisible.value = false;
-    fetchAppSystemList();
+    fetchAppSystemList(); // 新增/编辑成功后刷新列表
   } catch (error: any) {
     message.error(error.response?.data?.message || '操作失败');
   }
