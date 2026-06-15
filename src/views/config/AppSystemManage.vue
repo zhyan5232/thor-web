@@ -1,6 +1,5 @@
 <template>
   <div class="p-6 bg-gray-50 min-h-screen">
-    <!-- 页面头部 -->
     <div class="flex justify-between items-center mb-6">
       <div>
         <h1 class="text-2xl font-bold text-slate-800">应用系统管理</h1>
@@ -12,7 +11,6 @@
       </a-button>
     </div>
 
-    <!-- 主要内容卡片 -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-100">
       <div class="p-6">
         <a-table
@@ -41,14 +39,13 @@
                 >
                   <a class="text-red-500 hover:text-red-600">删除</a>
                 </a-popconfirm>
-              </template>
-            </div>
+              </div>
+            </template>
           </template>
         </a-table>
       </div>
     </div>
 
-    <!-- 新增/编辑 Drawer -->
     <a-drawer
       v-model:open="drawerVisible"
       :title="isEdit ? '编辑应用系统' : '新增应用系统'"
