@@ -124,7 +124,6 @@
 import { ref, reactive } from 'vue';
 import { message } from 'ant-design-vue';
 import { PlusOutlined } from '@ant-design/icons-vue';
-import dayjs from 'dayjs';
 
 // 表格列
 const columns = [
@@ -147,12 +146,20 @@ const triggerList = ref<any[]>([
     frequency: '每天',
     execType: '执行时间',
     execTime: '00:10:00',
-    startTime: '2026-06-01',
+    startTime: getToday(),
     endTime: '',
     cronExpression: '00 10 00 * * ? *',
     description: '每天执行'
   }
 ]);
+
+// 获取今天日期 YYYY-MM-DD
+function getToday() {
+  const d = new Date();
+  return d.getFullYear() + '-' + 
+         String(d.getMonth() + 1).padStart(2, '0') + '-' + 
+         String(d.getDate()).padStart(2, '0');
+}
 
 // Drawer 状态
 const drawerVisible = ref(false);
@@ -166,7 +173,7 @@ const form = reactive({
   frequency: '每天',
   execType: '执行时间',
   execTime: '00:10:00',
-  startTime: dayjs().format('YYYY-MM-DD'),
+  startTime: getToday(),
   endTime: '',
   cronExpression: '',
   description: ''
@@ -228,7 +235,7 @@ const handleAdd = () => {
     frequency: '每天',
     execType: '执行时间',
     execTime: '00:10:00',
-    startTime: dayjs().format('YYYY-MM-DD'),
+    startTime: getToday(),
     endTime: '',
     cronExpression: '',
     description: ''
@@ -281,7 +288,7 @@ const resetForm = () => {
     frequency: '每天',
     execType: '执行时间',
     execTime: '00:10:00',
-    startTime: dayjs().format('YYYY-MM-DD'),
+    startTime: getToday(),
     endTime: '',
     cronExpression: '',
     description: ''
