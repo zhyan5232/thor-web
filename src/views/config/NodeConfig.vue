@@ -1,72 +1,94 @@
 <template>
-  <div class="space-y-4">
-    <!-- 顶部操作区 -->
-    <div class="flex items-center justify-between">
-      <div class="flex gap-3">
-        <a-input-search
-          v-model:value="searchKeyword"
-          placeholder="输入节点名称、编码或IP搜索"
-          allow-clear
-          style="width: 320px"
-          @search="handleSearch"
-        />
-        <a-select
-          v-model:value="statusFilter"
-          placeholder="状态筛选"
-          allow-clear
-          style="width: 140px"
-          @change="handleFilterChange"
+  <div class="flex h-[calc(100vh-120px)] gap-4">
+    <!-- 左侧节点组列表 -->
+    <div class="w-64 border rounded-lg bg-white p-4 flex flex-col">
+      <div class="font-medium mb-3 text-slate-700">节点组</div>
+      <div class="flex-1 overflow-auto space-y-1">
+        <div
+          v-for="group in nodeGroups"
+          :key="group.id"
+          class="px-3 py-2 rounded cursor-pointer transition-colors"
+          :class="selectedGroupId === group.id ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-slate-50'"
+          @click="selectGroup(group)"
         >
-          <a-select-option value="">所有</a-select-option>
-          <a-select-option value="online">在线</a-select-option>
-          <a-select-option value="offline">离线</a-select-option>
-        </a-select>
+          {{ group.groupName }}
+        </div>
       </div>
-      <a-button type="primary" @click="handleAdd">
-        <template #icon><PlusOutlined /></template>
-        新增节点
-      </a-button>
+      <div class="pt-3 border-t text-xs text-gray-400">
+        请选择节点组后再操作节点
+      </div>
     </div>
 
-    <!-- 表格 -->
-    <a-table
-      :columns="columns"
-      :data-source="filteredList"
-      :pagination="pagination"
-      :loading="loading"
-      row-key="id"
-      @change="handleTableChange"
-    >
-      <template #bodyCell="{ column, record }">
-        <template v-if="column.key === 'address'">
-          {{ record.ip }}:{{ record.port }}
-        </template>
+    <!-- 右侧节点列表 -->
+    <div class="flex-1 flex flex-col">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex gap-3">
+          <a-input-search
+            v-model:value="searchKeyword"
+            placeholder="输入节点名称、编码或IP搜索"
+            allow-clear
+            style="width: 320px"
+            @search="handleSearch"
+          />
+          <a-select
+            v-model:value="statusFilter"
+            placeholder="状态筛选"
+            allow-clear
+            style="width: 140px"
+            @change="handleFilterChange"
+          >
+            <a-select-option value="">所有</a-select-option>
+            <a-select-option value="online">在线</a-select-option>
+            <a-select-option value="offline">离线</a-select-option>
+          </a-select>
+        </div>
 
-        <template v-if="column.key === 'nodeType'">
-          {{ getNodeTypeText(record.nodeType) }}
-        </template>
+        <a-button type="primary" :disabled="!selectedGroupId" @click="handleAdd">
+          <template #icon><PlusOutlined /></template>
+          新增节点
+        </a-button>
+      </div>
 
-        <template v-if="column.key === 'status'">
-          <a-tag :color="getStatusColor(record.status)">
-            {{ getStatusText(record.status) }}
-          </a-tag>
-        </template>
+      <a-table
+        :columns="columns"
+        :data-source="filteredList"
+        :pagination="pagination"
+        :loading="loading"
+        row-key="id"
+        @change="handleTableChange"
+        class="flex-1"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'address'">
+            {{ record.ip }}:{{ record.port }}
+          </template>
 
-        <template v-if="column.key === 'action'">
-          <a-space>
-            <a @click="handleEdit(record)">编辑</a>
-            <a-popconfirm
-              title="确定要删除该节点吗？"
-              ok-text="确定"
-              cancel-text="取消"
-              @confirm="handleDelete(record)"
-            >
-              <a class="text-red-500">删除</a>
-            </a-popconfirm>
-          </a-space>
+          <template v-if="column.key === 'nodeType'">
+            {{ getNodeTypeText(record.nodeType) }}
+          </template>
+
+          <template v-if="column.key === 'status'">
+            <a-tag :color="getStatusColor(record.status)">
+              {{ getStatusText(record.status) }}
+            </a-tag>
+          </template>
+
+          <template v-if="column.key === 'action'">
+            <a-space>
+              <a @click="handleEdit(record)">编辑</a>
+              <a-popconfirm
+                title="确定要删除该节点吗？"
+                ok-text="确定"
+                cancel-text="取消"
+                @confirm="handleDelete(record)"
+              >
+                <a class="text-red-500">删除</a>
+              </a-popconfirm>
+            </a-space>
+          </template>
         </template>
-      </template>
-    </a-table>
+      </a-table>
+    </div>
 
     <!-- 新增/编辑 Drawer -->
     <a-drawer
@@ -109,14 +131,6 @@
           </a-select>
         </a-form-item>
 
-        <a-form-item label="所属应用系统" name="appId">
-          <a-select v-model:value="formState.appId" placeholder="请选择所属应用">
-            <a-select-option v-for="app in appOptions" :key="app.id" :value="app.id">
-              {{ app.appName }} ({{ app.appCode }})
-            </a-select-option>
-          </a-select>
-        </a-form-item>
-
         <a-form-item label="状态" name="status">
           <a-select v-model:value="formState.status" placeholder="请选择状态">
             <a-select-option value="online">在线</a-select-option>
@@ -152,17 +166,15 @@ interface Node {
   ip: string;
   port: number;
   nodeType: 'center' | 'execution';
-  appId: number;
-  appName?: string;
+  nodeGroupId?: number;
   status: 'online' | 'offline';
   description: string;
   createTime: string;
 }
 
-interface AppOption {
+interface NodeGroup {
   id: number;
-  appCode: string;
-  appName: string;
+  groupName: string;
 }
 
 const columns: TableColumnsType = [
@@ -170,7 +182,6 @@ const columns: TableColumnsType = [
   { title: '节点名称', dataIndex: 'nodeName', key: 'nodeName', width: 180 },
   { title: 'IP:端口', key: 'address', width: 160 },
   { title: '节点类型', dataIndex: 'nodeType', key: 'nodeType', width: 100 },
-  { title: '所属应用', dataIndex: 'appName', key: 'appName', width: 160 },
   { title: '状态', key: 'status', width: 100 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '操作', key: 'action', width: 120, fixed: 'right' },
@@ -183,6 +194,7 @@ const submitLoading = ref(false);
 const drawerVisible = ref(false);
 const isEdit = ref(false);
 const currentRecord = ref<Node | null>(null);
+const selectedGroupId = ref<number | null>(null);
 
 const formRef = ref();
 
@@ -193,17 +205,15 @@ const formState = reactive({
   ip: '',
   port: 8080,
   nodeType: 'center' as const,
-  appId: 0,
   status: 'online' as const,
   description: '',
 });
 
 const nodeList = ref<Node[]>([]);
 
-const appOptions = ref<AppOption[]>([
-  { id: 1, appCode: 'CORE01', appName: '核心交易系统' },
-  { id: 2, appCode: 'IMAGE01', appName: '影像归档系统' },
-  { id: 3, appCode: 'RISK01', appName: '风控审批系统' },
+const nodeGroups = ref<NodeGroup[]>([
+  { id: 1, groupName: '核心交易节点组' },
+  { id: 2, groupName: '影像归档节点组' },
 ]);
 
 const pagination = reactive({
@@ -214,6 +224,11 @@ const pagination = reactive({
 
 const filteredList = computed(() => {
   let result = nodeList.value;
+
+  // 只显示当前选中节点组的节点
+  if (selectedGroupId.value) {
+    result = result.filter(item => item.nodeGroupId === selectedGroupId.value);
+  }
 
   if (searchKeyword.value) {
     const kw = searchKeyword.value.toLowerCase();
@@ -247,6 +262,11 @@ const getStatusText = (status: string) => {
   return status === 'online' ? '在线' : '离线';
 };
 
+const selectGroup = (group: NodeGroup) => {
+  selectedGroupId.value = group.id;
+  pagination.current = 1;
+};
+
 const loadData = () => {
   loading.value = true;
   setTimeout(() => {
@@ -258,36 +278,33 @@ const loadData = () => {
         ip: '10.0.1.10',
         port: 8080,
         nodeType: 'center',
-        appId: 1,
-        appName: '核心交易系统',
+        nodeGroupId: 1,
         status: 'online',
-        description: '核心交易系统中心节点，负责心跳管理和任务分发',
+        description: '核心交易系统中心节点',
         createTime: '2025-12-01 09:30:00',
       },
       {
         id: 2,
         nodeCode: 'NODE002',
-        nodeName: '影像归档执行节点01',
+        nodeName: '影像归档执行节点 01',
         ip: '10.0.1.20',
         port: 8080,
         nodeType: 'execution',
-        appId: 2,
-        appName: '影像归档系统',
+        nodeGroupId: 2,
         status: 'online',
-        description: '影像归档执行节点，通过心跳与中心节点保持连接',
+        description: '影像归档执行节点',
         createTime: '2025-12-03 14:15:00',
       },
       {
         id: 3,
         nodeCode: 'NODE003',
-        nodeName: '风控审批执行节点01',
+        nodeName: '风控审批执行节点 01',
         ip: '10.0.1.30',
         port: 8080,
         nodeType: 'execution',
-        appId: 3,
-        appName: '风控审批系统',
+        nodeGroupId: 1,
         status: 'offline',
-        description: '风控审批执行节点，当前离线',
+        description: '风控审批系统执行节点',
         createTime: '2025-12-05 11:00:00',
       },
     ];
@@ -303,6 +320,10 @@ const handleFilterChange = () => { pagination.current = 1; };
 const handleTableChange = (pag: any) => { pagination.current = pag.current; };
 
 const handleAdd = () => {
+  if (!selectedGroupId.value) {
+    message.warning('请先选择一个节点组');
+    return;
+  }
   isEdit.value = false;
   resetForm();
   drawerVisible.value = true;
@@ -328,25 +349,25 @@ const handleSubmit = async () => {
     await formRef.value?.validate();
     submitLoading.value = true;
 
-    const selectedApp = appOptions.value.find(a => a.id === formState.appId);
-
     if (isEdit.value && currentRecord.value) {
       const index = nodeList.value.findIndex(item => item.id === currentRecord.value!.id);
       if (index !== -1) {
         nodeList.value[index] = {
           ...formState,
           id: currentRecord.value.id,
+          nodeGroupId: currentRecord.value.nodeGroupId,
           createTime: currentRecord.value.createTime,
-          appName: selectedApp?.appName,
         };
       }
       message.success('编辑成功');
     } else {
+      if (!selectedGroupId.value) return;
+
       const newNode: Node = {
         ...formState,
         id: Date.now(),
+        nodeGroupId: selectedGroupId.value,
         createTime: new Date().toLocaleString(),
-        appName: selectedApp?.appName,
       };
       nodeList.value.unshift(newNode);
       message.success('新增成功');
@@ -370,7 +391,6 @@ const resetForm = () => {
     ip: '',
     port: 8080,
     nodeType: 'center',
-    appId: 0,
     status: 'online',
     description: '',
   });
