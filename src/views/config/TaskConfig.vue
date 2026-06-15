@@ -437,10 +437,8 @@ const systemVarColumns = [
   { title: '备注', dataIndex: 'remark', key: 'remark' }
 ];
 
-// 触发器弹窗
-const triggerModalVisible = ref(false);
-const triggerSearch = ref('');
-const selectedTriggerKeys = ref<any[]>([]);
+// ==================== 触发器数据（后续从触发器管理页面共享） ====================
+// 注意：实际项目中这些数据应该从 Trigger Management 页面或后端接口获取
 const triggers = ref([
   { id: 1, name: 'aa', remark: '每天01:10:00执行' },
   { id: 2, name: '每天00:10启动', remark: '每天00:10:00执行' },
@@ -450,6 +448,11 @@ const triggers = ref([
   { id: 6, name: 'day', remark: '每天00:30:00执行' },
   { id: 7, name: '每天06:00:00执行', remark: '每天06:00:00执行' },
 ]);
+
+// 触发器弹窗
+const triggerModalVisible = ref(false);
+const triggerSearch = ref('');
+const selectedTriggerKeys = ref<any[]>([]);
 
 const filteredTriggers = computed(() => {
   if (!triggerSearch.value) return triggers.value;
