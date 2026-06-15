@@ -20,8 +20,8 @@
         <template #icon><FileTextOutlined /></template>
         <template #title>任务配置</template>
         <a-menu-item key="/config/app">应用系统管理</a-menu-item>
-        <a-menu-item key="/config/node">节点管理</a-menu-item>
         <a-menu-item key="/config/node-group">节点组管理</a-menu-item>
+        <a-menu-item key="/config/node">节点管理</a-menu-item>
         <a-menu-item key="/config/task">任务管理</a-menu-item>
         <a-menu-item key="/config/file-format">自定义文件格式</a-menu-item>
         <a-menu-item key="/config/trigger">触发器管理</a-menu-item>
