@@ -95,22 +95,35 @@
       </a-form>
     </a-drawer>
 
-    <!-- 关联节点弹窗 -->
+    <!-- 关联节点弹窗（美化竖版样式） -->
     <a-modal
       v-model:open="nodeModalVisible"
       title="关联节点"
-      width="520"
+      width="480"
       @ok="confirmNodeSelection"
       @cancel="nodeModalVisible = false"
+      ok-text="确认"
+      cancel-text="取消"
     >
-      <div class="max-h-[400px] overflow-auto border rounded p-3">
-        <a-checkbox-group v-model:value="tempSelectedNodeIds" style="width: 100%">
-          <div v-for="node in availableNodes" :key="node.id" class="py-1.5 border-b last:border-b-0">
-            <a-checkbox :value="node.id">
-              {{ node.nodeName }} ({{ node.nodeCode }})
-            </a-checkbox>
+      <div class="max-h-[420px] overflow-auto pr-1">
+        <div class="space-y-1">
+          <div
+            v-for="node in availableNodes"
+            :key="node.id"
+            class="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors hover:bg-slate-50"
+            @click="toggleNodeSelection(node.id)"
+          >
+            <a-checkbox
+              :checked="tempSelectedNodeIds.includes(node.id)"
+              @change="toggleNodeSelection(node.id)"
+              @click.stop
+            />
+            <div class="flex-1 text-sm">
+              <div class="font-medium text-slate-700">{{ node.nodeName }}</div>
+              <div class="text-xs text-slate-400">{{ node.nodeCode }}</div>
+            </div>
           </div>
-        </a-checkbox-group>
+        </div>
       </div>
     </a-modal>
   </div>
@@ -197,6 +210,16 @@ const getNodeNames = (nodeIds: number[]) => {
   return nodeIds
     .map(id => availableNodes.value.find(n => n.id === id)?.nodeName)
     .filter(Boolean) as string[];
+};
+
+// 切换节点选中状态
+const toggleNodeSelection = (nodeId: number) => {
+  const index = tempSelectedNodeIds.value.indexOf(nodeId);
+  if (index > -1) {
+    tempSelectedNodeIds.value.splice(index, 1);
+  } else {
+    tempSelectedNodeIds.value.push(nodeId);
+  }
 };
 
 // 打开关联节点弹窗
