@@ -38,8 +38,8 @@
             @change="handleFilterChange"
           >
             <a-select-option value="">所有</a-select-option>
-            <a-select-option value="online">在线</a-select-option>
-            <a-select-option value="offline">离线</a-select-option>
+            <a-select-option value="active">启动</a-select-option>
+            <a-select-option value="inactive">停用</a-select-option>
           </a-select>
         </div>
 
@@ -68,8 +68,8 @@
           </template>
 
           <template v-if="column.key === 'status'">
-            <a-tag :color="getStatusColor(record.status)">
-              {{ getStatusText(record.status) }}
+            <a-tag :color="record.status === 'active' ? 'green' : 'red'">
+              {{ record.status === 'active' ? '启动' : '停用' }}
             </a-tag>
           </template>
 
@@ -90,57 +90,79 @@
       </a-table>
     </div>
 
-    <!-- 新增/编辑 Drawer -->
+    <!-- 新增/编辑节点 Drawer -->
     <a-drawer
       v-model:open="drawerVisible"
       :title="isEdit ? '编辑节点' : '新增节点'"
-      width="560"
+      width="620"
       @close="resetForm"
     >
-      <a-form
-        :model="formState"
-        :rules="rules"
-        ref="formRef"
-        layout="vertical"
-      >
-        <a-form-item label="节点编码" name="nodeCode">
-          <a-input v-model:value="formState.nodeCode" :disabled="isEdit" placeholder="请输入节点编码" />
-        </a-form-item>
+      <!-- Tips -->
+      <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
+        <strong>Tips：</strong> 传输处理类型中，自己传输处理表示节点可以传输、处理任务；代理传输处理表示节点可以通过代理节点传输，处理任务；不能传输处理表示节点不可以传输、处理任务，必须依靠代理节点来完成传输任务；
+      </div>
 
-        <a-form-item label="节点名称" name="nodeName">
-          <a-input v-model:value="formState.nodeName" placeholder="请输入节点名称" />
-        </a-form-item>
-
+      <a-form :model="formState" :rules="rules" ref="formRef" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="IP 地址" name="ip">
-              <a-input v-model:value="formState.ip" placeholder="请输入IP地址" />
+            <a-form-item label="节点名称" name="nodeName">
+              <a-input v-model:value="formState.nodeName" placeholder="请输入节点名称" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="端口" name="port">
-              <a-input-number v-model:value="formState.port" :min="1" :max="65535" style="width: 100%" />
+            <a-form-item label="节点类型" name="nodeType">
+              <a-select v-model:value="formState.nodeType">
+                <a-select-option value="normal">一般节点</a-select-option>
+                <a-select-option value="sync">同步节点</a-select-option>
+              </a-select>
             </a-form-item>
           </a-col>
         </a-row>
 
-        <a-form-item label="节点类型" name="nodeType">
-          <a-select v-model:value="formState.nodeType" placeholder="请选择节点类型">
-            <a-select-option value="center">中心节点</a-select-option>
-            <a-select-option value="execution">执行节点</a-select-option>
-          </a-select>
-        </a-form-item>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="节点服务 (IP)" name="ip">
+              <a-input v-model:value="formState.ip" placeholder="请输入节点IP" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="节点端口" name="port">
+              <a-input-number v-model:value="formState.port" :min="1" :max="65535" style="width: 100%" placeholder="请输入端口" />
+            </a-form-item>
+          </a-col>
+        </a-row>
 
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="formState.status" placeholder="请选择状态">
-            <a-select-option value="online">在线</a-select-option>
-            <a-select-option value="offline">离线</a-select-option>
-          </a-select>
-        </a-form-item>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="数据文件目录" name="dataDir">
+              <a-input v-model:value="formState.dataDir" placeholder="请输入数据文件目录" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="处理文件目录" name="processDir">
+              <a-input v-model:value="formState.processDir" placeholder="请输入处理文件目录" />
+            </a-form-item>
+          </a-col>
+        </a-row>
 
-        <a-form-item label="描述" name="description">
-          <a-textarea v-model:value="formState.description" :rows="3" placeholder="请输入节点描述" />
-        </a-form-item>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="传输处理类型" name="transferType">
+              <a-select v-model:value="formState.transferType">
+                <a-select-option value="self">自己传输处理</a-select-option>
+                <a-select-option value="proxy">代理传输处理</a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="是否有效" name="status">
+              <a-select v-model:value="formState.status">
+                <a-select-option value="active">启动</a-select-option>
+                <a-select-option value="inactive">停用</a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+        </a-row>
 
         <div class="flex justify-end gap-2 mt-6">
           <a-button @click="resetForm">取消</a-button>
@@ -161,14 +183,17 @@ import type { TableColumnsType } from 'ant-design-vue';
 
 interface Node {
   id: number;
-  nodeCode: string;
+  nodeCode?: string;
   nodeName: string;
   ip: string;
   port: number;
-  nodeType: 'center' | 'execution';
+  nodeType: 'normal' | 'sync';
   nodeGroupId?: number;
-  status: 'online' | 'offline';
-  description: string;
+  dataDir?: string;
+  processDir?: string;
+  transferType?: 'self' | 'proxy';
+  status: 'active' | 'inactive';
+  description?: string;
   createTime: string;
 }
 
@@ -178,12 +203,12 @@ interface NodeGroup {
 }
 
 const columns: TableColumnsType = [
-  { title: '节点编码', dataIndex: 'nodeCode', key: 'nodeCode', width: 130 },
   { title: '节点名称', dataIndex: 'nodeName', key: 'nodeName', width: 180 },
-  { title: 'IP:端口', key: 'address', width: 160 },
+  { title: '节点服务(IP)', dataIndex: 'ip', key: 'ip', width: 140 },
+  { title: '节点端口', dataIndex: 'port', key: 'port', width: 100 },
   { title: '节点类型', dataIndex: 'nodeType', key: 'nodeType', width: 100 },
+  { title: '传输处理类型', dataIndex: 'transferType', key: 'transferType', width: 130 },
   { title: '状态', key: 'status', width: 100 },
-  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 170 },
   { title: '操作', key: 'action', width: 120, fixed: 'right' },
 ];
 
@@ -200,13 +225,14 @@ const formRef = ref();
 
 const formState = reactive({
   id: 0,
-  nodeCode: '',
   nodeName: '',
   ip: '',
-  port: 8080,
-  nodeType: 'center' as const,
-  status: 'online' as const,
-  description: '',
+  port: 5001,
+  nodeType: 'normal' as const,
+  dataDir: '',
+  processDir: '',
+  transferType: 'self' as const,
+  status: 'active' as const,
 });
 
 const nodeList = ref<Node[]>([]);
@@ -225,16 +251,13 @@ const pagination = reactive({
 const filteredList = computed(() => {
   let result = nodeList.value;
 
-  // 只显示当前选中节点组的节点
   if (selectedGroupId.value) {
     result = result.filter(item => item.nodeGroupId === selectedGroupId.value);
   }
 
   if (searchKeyword.value) {
     const kw = searchKeyword.value.toLowerCase();
-    result = result.filter(item =>
-      item.nodeName.toLowerCase().includes(kw) || item.nodeCode.toLowerCase().includes(kw) || item.ip.toLowerCase().includes(kw)
-    );
+    result = result.filter(item => item.nodeName.toLowerCase().includes(kw) || item.ip.toLowerCase().includes(kw));
   }
 
   if (statusFilter.value) {
@@ -245,21 +268,13 @@ const filteredList = computed(() => {
 });
 
 const rules = {
-  nodeCode: [{ required: true, message: '请输入节点编码' }],
   nodeName: [{ required: true, message: '请输入节点名称' }],
-  ip: [{ required: true, message: '请输入IP地址' }],
+  ip: [{ required: true, message: '请输入节点IP' }],
+  port: [{ required: true, message: '请输入端口' }],
 };
 
 const getNodeTypeText = (type: string) => {
-  return type === 'center' ? '中心节点' : '执行节点';
-};
-
-const getStatusColor = (status: string) => {
-  return status === 'online' ? 'green' : 'red';
-};
-
-const getStatusText = (status: string) => {
-  return status === 'online' ? '在线' : '离线';
+  return type === 'normal' ? '一般节点' : '同步节点';
 };
 
 const selectGroup = (group: NodeGroup) => {
@@ -273,39 +288,25 @@ const loadData = () => {
     nodeList.value = [
       {
         id: 1,
-        nodeCode: 'NODE001',
-        nodeName: '核心交易中心节点',
-        ip: '10.0.1.10',
-        port: 8080,
-        nodeType: 'center',
+        nodeName: 'ABSD',
+        ip: '10.150.32.33',
+        port: 5001,
+        nodeType: 'normal',
         nodeGroupId: 1,
-        status: 'online',
-        description: '核心交易系统中心节点',
+        transferType: 'self',
+        status: 'active',
         createTime: '2025-12-01 09:30:00',
       },
       {
         id: 2,
-        nodeCode: 'NODE002',
-        nodeName: '影像归档执行节点 01',
-        ip: '10.0.1.20',
-        port: 8080,
-        nodeType: 'execution',
-        nodeGroupId: 2,
-        status: 'online',
-        description: '影像归档执行节点',
-        createTime: '2025-12-03 14:15:00',
-      },
-      {
-        id: 3,
-        nodeCode: 'NODE003',
-        nodeName: '风控审批执行节点 01',
-        ip: '10.0.1.30',
-        port: 8080,
-        nodeType: 'execution',
+        nodeName: 'AMLRQ',
+        ip: '10.150.5.15',
+        port: 5001,
+        nodeType: 'normal',
         nodeGroupId: 1,
-        status: 'offline',
-        description: '风控审批系统执行节点',
-        createTime: '2025-12-05 11:00:00',
+        transferType: 'self',
+        status: 'active',
+        createTime: '2025-12-03 14:15:00',
       },
     ];
     pagination.total = nodeList.value.length;
@@ -332,10 +333,7 @@ const handleAdd = () => {
 const handleEdit = (record: Node) => {
   isEdit.value = true;
   currentRecord.value = record;
-  Object.assign(formState, {
-    ...record,
-    port: record.port || 8080,
-  });
+  Object.assign(formState, record);
   drawerVisible.value = true;
 };
 
@@ -386,13 +384,14 @@ const resetForm = () => {
   formRef.value?.resetFields();
   Object.assign(formState, {
     id: 0,
-    nodeCode: '',
     nodeName: '',
     ip: '',
-    port: 8080,
-    nodeType: 'center',
-    status: 'online',
-    description: '',
+    port: 5001,
+    nodeType: 'normal',
+    dataDir: '',
+    processDir: '',
+    transferType: 'self',
+    status: 'active',
   });
   currentRecord.value = null;
   isEdit.value = false;
