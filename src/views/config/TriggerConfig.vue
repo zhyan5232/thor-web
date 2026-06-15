@@ -68,7 +68,7 @@
           </a-col>
           <a-col :span="12">
             <a-form-item label="执行方式" required>
-              <a-select v-model:value="form.execType">
+              <a-select v-model:value="form.execType" @change="onExecTypeChange">
                 <a-select-option value="执行时间">执行时间</a-select-option>
                 <a-select-option value="间隔时间">间隔时间</a-select-option>
               </a-select>
@@ -76,7 +76,8 @@
           </a-col>
         </a-row>
 
-        <a-row :gutter="16">
+        <!-- 执行时间模式 -->
+        <a-row v-if="form.execType === '执行时间'" :gutter="16">
           <a-col :span="12">
             <a-form-item label="执行时间" required>
               <a-time-picker
@@ -87,25 +88,42 @@
               />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
-            <a-form-item label="开始时间" required>
-              <a-date-picker v-model:value="form.startTime" format="YYYY-MM-DD" value-format="YYYY-MM-DD" />
+        </a-row>
+
+        <!-- 间隔时间模式 -->
+        <a-row v-else :gutter="16">
+          <a-col :span="8">
+            <a-form-item label="间隔时间" required>
+              <a-input-number v-model:value="form.intervalValue" :min="0" style="width:100%" @change="generateCron" />
             </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item label="单位" required>
+              <a-select v-model:value="form.intervalUnit" @change="generateCron">
+                <a-select-option value="秒">秒</a-select-option>
+                <a-select-option value="分">分</a-select-option>
+                <a-select-option value="时">时</a-select-option>
+              </a-select-option>
+            </a-select>
           </a-col>
         </a-row>
 
         <a-row :gutter="16">
           <a-col :span="12">
+            <a-form-item label="开始时间" required>
+              <a-date-picker v-model:value="form.startTime" format="YYYY-MM-DD" value-format="YYYY-MM-DD" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
             <a-form-item label="结束时间">
               <a-date-picker v-model:value="form.endTime" format="YYYY-MM-DD" value-format="YYYY-MM-DD" allow-clear />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
-            <a-form-item label="克隆表达式" required>
-              <a-input v-model:value="form.cronExpression" disabled />
-            </a-form-item>
-          </a-col>
         </a-row>
+
+        <a-form-item label="克隆表达式" required>
+          <a-input v-model:value="form.cronExpression" disabled />
+        </a-form-item>
 
         <a-form-item label="描述">
           <a-textarea v-model:value="form.description" :rows="3" />
@@ -131,7 +149,7 @@ const columns = [
   { title: '定义类型', dataIndex: 'defineType', key: 'defineType', width: 100 },
   { title: '执行频率', dataIndex: 'frequency', key: 'frequency', width: 100 },
   { title: '执行方式', dataIndex: 'execType', key: 'execType', width: 100 },
-  { title: '执行时间', dataIndex: 'execTime', key: 'execTime', width: 120 },
+  { title: '执行时间/间隔', dataIndex: 'execTime', key: 'execTime', width: 140 },
   { title: '开始时间', dataIndex: 'startTime', key: 'startTime', width: 120 },
   { title: '克隆表达式', dataIndex: 'cronExpression', key: 'cronExpression', width: 180 },
   { title: '操作', key: 'action', width: 120 }
@@ -146,6 +164,8 @@ const triggerList = ref<any[]>([
     frequency: '每天',
     execType: '执行时间',
     execTime: '00:10:00',
+    intervalValue: 0,
+    intervalUnit: '秒',
     startTime: getToday(),
     endTime: '',
     cronExpression: '00 10 00 * * ? *',
@@ -153,7 +173,7 @@ const triggerList = ref<any[]>([
   }
 ]);
 
-// 获取今天日期 YYYY-MM-DD
+// 获取今天日期
 function getToday() {
   const d = new Date();
   return d.getFullYear() + '-' + 
@@ -173,53 +193,81 @@ const form = reactive({
   frequency: '每天',
   execType: '执行时间',
   execTime: '00:10:00',
+  intervalValue: 0,
+  intervalUnit: '秒',
   startTime: getToday(),
   endTime: '',
   cronExpression: '',
   description: ''
 });
 
+// 执行方式切换时重置相关字段
+const onExecTypeChange = (val: string) => {
+  if (val === '执行时间') {
+    form.intervalValue = 0;
+    form.intervalUnit = '秒';
+  } else {
+    form.execTime = '00:00:00';
+  }
+  generateCron();
+};
+
 // 自动生成Cron表达式
 const generateCron = () => {
-  if (!form.execTime) return;
-
-  const timeParts = form.execTime.split(':');
-  const hour = timeParts[0];
-  const minute = timeParts[1];
-  const second = timeParts[2] || '00';
-
   let cron = '';
 
-  switch (form.frequency) {
-    case '每天':
-      cron = `${second} ${minute} ${hour} * * ? *`;
-      break;
-    case '月初':
-      cron = `${second} ${minute} ${hour} 1 * ? *`;
-      break;
-    case '月末':
-      cron = `${second} ${minute} ${hour} L * ? *`;
-      break;
-    case '旬初':
-      cron = `${second} ${minute} ${hour} 1-10 * ? *`;
-      break;
-    case '季初':
-      cron = `${second} ${minute} ${hour} 1 1,4,7,10 ? *`;
-      break;
-    case '季末':
-      cron = `${second} ${minute} ${hour} L 3,6,9,12 ? *`;
-      break;
-    case '年初':
-      cron = `${second} ${minute} ${hour} 1 1 ? *`;
-      break;
-    case '半年末':
-      cron = `${second} ${minute} ${hour} L 6,12 ? *`;
-      break;
-    case '年末':
-      cron = `${second} ${minute} ${hour} L 12 ? *`;
-      break;
-    default:
-      cron = `${second} ${minute} ${hour} * * ? *`;
+  if (form.execType === '执行时间') {
+    if (!form.execTime) return;
+    const timeParts = form.execTime.split(':');
+    const hour = timeParts[0];
+    const minute = timeParts[1];
+    const second = timeParts[2] || '00';
+
+    switch (form.frequency) {
+      case '每天':
+        cron = `${second} ${minute} ${hour} * * ? *`;
+        break;
+      case '月初':
+        cron = `${second} ${minute} ${hour} 1 * ? *`;
+        break;
+      case '月末':
+        cron = `${second} ${minute} ${hour} L * ? *`;
+        break;
+      case '旬初':
+        cron = `${second} ${minute} ${hour} 1-10 * ? *`;
+        break;
+      case '季初':
+        cron = `${second} ${minute} ${hour} 1 1,4,7,10 ? *`;
+        break;
+      case '季末':
+        cron = `${second} ${minute} ${hour} L 3,6,9,12 ? *`;
+        break;
+      case '年初':
+        cron = `${second} ${minute} ${hour} 1 1 ? *`;
+        break;
+      case '半年末':
+        cron = `${second} ${minute} ${hour} L 6,12 ? *`;
+        break;
+      case '年末':
+        cron = `${second} ${minute} ${hour} L 12 ? *`;
+        break;
+      default:
+        cron = `${second} ${minute} ${hour} * * ? *`;
+    }
+  } else {
+    // 间隔时间模式
+    const val = form.intervalValue || 0;
+    const unit = form.intervalUnit;
+
+    if (unit === '秒') {
+      cron = `0/${val} * * * ? *`;
+    } else if (unit === '分') {
+      cron = `0 0/${val} * * ? *`;
+    } else if (unit === '时') {
+      cron = `0 0 0/${val} * ? *`;
+    } else {
+      cron = `0/${val} * * * ? *`;
+    }
   }
 
   form.cronExpression = cron;
@@ -235,6 +283,8 @@ const handleAdd = () => {
     frequency: '每天',
     execType: '执行时间',
     execTime: '00:10:00',
+    intervalValue: 0,
+    intervalUnit: '秒',
     startTime: getToday(),
     endTime: '',
     cronExpression: '',
@@ -260,8 +310,12 @@ const handleDelete = (record: any) => {
 
 // 保存
 const handleSubmit = () => {
-  if (!form.name || !form.execTime) {
-    message.error('触发器名称和执行时间不能为空');
+  if (!form.name) {
+    message.error('触发器名称不能为空');
+    return;
+  }
+  if (form.execType === '执行时间' && !form.execTime) {
+    message.error('执行时间不能为空');
     return;
   }
 
@@ -288,6 +342,8 @@ const resetForm = () => {
     frequency: '每天',
     execType: '执行时间',
     execTime: '00:10:00',
+    intervalValue: 0,
+    intervalUnit: '秒',
     startTime: getToday(),
     endTime: '',
     cronExpression: '',
