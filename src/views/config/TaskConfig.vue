@@ -21,7 +21,6 @@
       <!-- 右侧内容 -->
       <div class="flex-1 flex flex-col min-h-0">
         <a-card class="flex-1 flex flex-col min-h-0" :bordered="false">
-          <!-- 任务组列表 -->
           <template v-if="currentView === 'taskGroup'">
             <div class="flex justify-between mb-3 px-1">
               <div class="text-base font-medium">任务组列表 - {{ currentAppSystemName }}</div>
@@ -48,7 +47,6 @@
             </a-table>
           </template>
 
-          <!-- 任务列表 -->
           <template v-else-if="currentView === 'task'">
             <div class="flex justify-between mb-3 px-1">
               <div class="text-base font-medium">任务列表 - {{ currentTaskGroupName }}</div>
@@ -84,9 +82,8 @@
       </div>
     </div>
 
-    <!-- 新增/编辑任务组 - 两步向导 -->
-    <a-drawer v-model:open="taskGroupDrawerVisible" :title="isEditTaskGroup ? '编辑任务组' : '新增任务组'" width="680" @close="resetTaskGroupWizard">
-      <!-- 步骤条 -->
+    <!-- 任务组向导 Drawer -->
+    <a-drawer v-model:open="taskGroupDrawerVisible" :title="isEditTaskGroup ? '编辑任务组' : '新增任务组'" width="720" @close="resetTaskGroupWizard">
       <a-steps :current="currentStep" size="small" class="mb-4">
         <a-step title="基本信息" />
         <a-step title="任务组参数" />
@@ -103,7 +100,7 @@
             </a-col>
             <a-col :span="12">
               <a-form-item label="任务组标识" required>
-                <a-input v-model:value="taskGroupForm.groupCode" placeholder="唯一标识" />
+                <a-input v-model:value="taskGroupForm.groupCode" />
               </a-form-item>
             </a-col>
           </a-row>
@@ -154,7 +151,7 @@
       <div v-else>
         <div class="flex justify-between mb-2">
           <div class="font-medium">任务组参数</div>
-          <a-button type="primary" size="small" @click="showParamForm = true">
+          <a-button type="primary" size="small" @click="showParamForm = true; resetCurrentParam()">
             <template #icon><PlusOutlined /></template>
             添加参数
           </a-button>
@@ -173,7 +170,7 @@
           </template>
         </a-table>
 
-        <!-- 添加/编辑参数表单 -->
+        <!-- 参数表单 -->
         <a-card v-if="showParamForm" size="small" class="mb-3">
           <a-form layout="vertical">
             <a-row :gutter="12">
@@ -197,7 +194,18 @@
               </a-col>
             </a-row>
 
-            <a-row v-if="currentParam.paramType === 'SQL'" :gutter="12">
+            <!-- 常量类型：显示系统变量按钮 -->
+            <a-row v-if="currentParam.paramType === '常量'" :gutter="12">
+              <a-col :span="24">
+                <a-form-item label="参数值">
+                  <a-input v-model:value="currentParam.paramValue" style="width: 70%" />
+                  <a-button style="margin-left: 8px" @click="openSystemVarModal">系统变量</a-button>
+                </a-form-item>
+              </a-col>
+            </a-row>
+
+            <!-- SQL类型 -->
+            <a-row v-else :gutter="12">
               <a-col :span="12">
                 <a-form-item label="数据源">
                   <a-select v-model:value="currentParam.dataSource" placeholder="选择数据源">
@@ -209,14 +217,6 @@
               <a-col :span="12">
                 <a-form-item label="参数值 (SQL)">
                   <a-textarea v-model:value="currentParam.paramValue" :rows="2" placeholder="输入SQL语句" />
-                </a-form-item>
-              </a-col>
-            </a-row>
-
-            <a-row v-else :gutter="12">
-              <a-col :span="24">
-                <a-form-item label="参数值">
-                  <a-input v-model:value="currentParam.paramValue" />
                 </a-form-item>
               </a-col>
             </a-row>
@@ -246,9 +246,36 @@
       </div>
     </a-drawer>
 
-    <!-- 任务 Drawer (保持原有简化版) -->
+    <!-- 系统变量选择弹窗 -->
+    <a-modal
+      v-model:open="systemVarModalVisible"
+      title="参数值"
+      width="720"
+      @ok="confirmSystemVar"
+      ok-text="确定"
+      cancel-text="取消"
+    >
+      <div class="mb-3">
+        <a-input-search
+          v-model:value="systemVarSearch"
+          placeholder="变量名称"
+          enter-button="搜索"
+          @search="filterSystemVars"
+        />
+      </div>
+
+      <a-table
+        :columns="systemVarColumns"
+        :data-source="filteredSystemVars"
+        :row-selection="{ type: 'radio', selectedRowKeys: selectedSystemVarKeys, onChange: onSystemVarSelect }"
+        :pagination="{ pageSize: 8 }"
+        size="small"
+        row-key="id"
+      />
+    </a-modal>
+
+    <!-- 任务 Drawer -->
     <a-drawer v-model:open="taskDrawerVisible" title="新增/编辑任务" width="720">
-      <!-- 简化版任务表单，保持之前逻辑 -->
       <a-form :model="taskForm" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
@@ -301,20 +328,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue';
+import { ref, reactive, computed } from 'vue';
 import { message } from 'ant-design-vue';
 import { PlusOutlined } from '@ant-design/icons-vue';
 
 // 树形数据
 const treeData = ref([
-  {
-    key: 'app-1',
-    title: '张家口银行',
-    children: [
-      { key: 'tg-1', title: '2026_NEW_TEST' },
-      { key: 'tg-2', title: '默认任务组' }
-    ]
-  },
+  { key: 'app-1', title: '张家口银行', children: [{ key: 'tg-1', title: '2026_NEW_TEST' }, { key: 'tg-2', title: '默认任务组' }] },
   { key: 'app-2', title: 'ODS', children: [] }
 ]);
 
@@ -356,16 +376,7 @@ const currentStep = ref(0);
 const showParamForm = ref(false);
 
 // 任务组基本信息
-const taskGroupForm = reactive({
-  id: '',
-  groupCode: '',
-  groupName: '',
-  appSystemName: '',
-  taskType: '发送文件',
-  status: 'active',
-  triggerType: '不自动触发',
-  remark: ''
-});
+const taskGroupForm = reactive({ id: '', groupCode: '', groupName: '', appSystemName: '', taskType: '发送文件', status: 'active', triggerType: '不自动触发', remark: '' });
 
 // 参数列表
 const paramList = ref<any[]>([]);
@@ -377,15 +388,33 @@ const paramColumns = [
   { title: '操作', key: 'action', width: 100 }
 ];
 
-// 当前正在编辑的参数
-const currentParam = reactive({
-  paramCode: '',
-  paramName: '',
-  paramType: '常量',
-  dataSource: '',
-  paramValue: '',
-  remark: ''
+// 当前参数
+const currentParam = reactive({ paramCode: '', paramName: '', paramType: '常量', dataSource: '', paramValue: '', remark: '' });
+
+// 系统变量弹窗
+const systemVarModalVisible = ref(false);
+const systemVarSearch = ref('');
+const selectedSystemVarKeys = ref<any[]>([]);
+const systemVars = ref([
+  { id: 1, code: 'CX', name: 'VVV', value: '20100917', remark: '' },
+  { id: 2, code: 'DATE', name: 'ODSDATE44', value: "SELECT FILE_DATE FROM DAT...", remark: '' },
+  { id: 3, code: 'EASD', name: 'SDAS', value: "SELECT TO_CHAR(SYSDATE,'Y...", remark: '' },
+  { id: 4, code: 'ODSDATE', name: 'ODSDATE65', value: "SELECT FILE_DATE FROM DAT...", remark: '' },
+  { id: 5, code: 'TO', name: 'TO', value: "SELECT TO_CHAR(SYSDATE,'Y...", remark: '' },
+]);
+
+const filteredSystemVars = computed(() => {
+  if (!systemVarSearch.value) return systemVars.value;
+  const keyword = systemVarSearch.value.toLowerCase();
+  return systemVars.value.filter(v => v.code.toLowerCase().includes(keyword) || v.name.toLowerCase().includes(keyword));
 });
+
+const systemVarColumns = [
+  { title: '标识', dataIndex: 'code', key: 'code' },
+  { title: '名称', dataIndex: 'name', key: 'name' },
+  { title: '值', dataIndex: 'value', key: 'value', ellipsis: true },
+  { title: '备注', dataIndex: 'remark', key: 'remark' }
+];
 
 // 任务表单
 const taskDrawerVisible = ref(false);
@@ -416,7 +445,7 @@ const handleEditTaskGroup = (record: any) => {
   taskGroupDrawerVisible.value = true;
 };
 
-// 下一步到参数页
+// 下一步
 const goToParamStep = () => {
   if (!taskGroupForm.groupCode || !taskGroupForm.groupName) {
     message.error('请填写任务组标识和名称');
@@ -427,10 +456,37 @@ const goToParamStep = () => {
 
 // 参数类型切换
 const onParamTypeChange = (val: string) => {
-  if (val === '常量') {
-    currentParam.dataSource = '';
-  }
+  if (val === '常量') currentParam.dataSource = '';
 };
+
+// 打开系统变量弹窗
+const openSystemVarModal = () => {
+  systemVarSearch.value = '';
+  selectedSystemVarKeys.value = [];
+  systemVarModalVisible.value = true;
+};
+
+// 选择系统变量
+const onSystemVarSelect = (keys: any[]) => {
+  selectedSystemVarKeys.value = keys;
+};
+
+// 确认选择系统变量
+const confirmSystemVar = () => {
+  if (selectedSystemVarKeys.value.length === 0) {
+    message.warning('请选择一个系统变量');
+    return;
+  }
+  const selected = systemVars.value.find(v => v.id === selectedSystemVarKeys.value[0]);
+  if (selected) {
+    currentParam.paramValue = `$${selected.code}$`;
+    message.success(`已选择系统变量: $${selected.code}$`);
+  }
+  systemVarModalVisible.value = false;
+};
+
+// 过滤系统变量
+const filterSystemVars = () => {};
 
 // 保存参数
 const saveParam = () => {
@@ -455,9 +511,10 @@ const deleteParam = (index: number) => {
   paramList.value.splice(index, 1);
 };
 
-// 重置当前参数表单
+// 重置当前参数
 const resetCurrentParam = () => {
   Object.assign(currentParam, { paramCode: '', paramName: '', paramType: '常量', dataSource: '', paramValue: '', remark: '' });
+  selectedSystemVarKeys.value = [];
 };
 
 // 取消参数表单
@@ -478,7 +535,7 @@ const handleSubmitTaskGroup = () => {
   resetTaskGroupWizard();
 };
 
-// 其他方法保持不变...
+// 其他方法
 const handleDeleteTaskGroup = (record: any) => { taskGroupList.value = taskGroupList.value.filter(i => i.id !== record.id); };
 const handleSelectTaskGroup = (record: any) => { currentView.value = 'task'; currentTaskGroupName.value = record.groupName; };
 const handleAddTask = () => { isEditTask.value = false; taskDrawerVisible.value = true; };
