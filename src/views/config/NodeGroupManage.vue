@@ -155,7 +155,7 @@ const form = reactive({
   description: ''
 });
 
-// 计算属性：筛选后的节点组列表
+// 计算属性
 const filteredNodeGroups = computed(() => {
   let list = nodeGroupList.value;
 
@@ -166,8 +166,8 @@ const filteredNodeGroups = computed(() => {
   if (searchKeyword.value) {
     const kw = searchKeyword.value.toLowerCase();
     list = list.filter(item => 
-      item.groupName?.toLowerCase().includes(kw) || 
-      item.groupCode?.toLowerCase().includes(kw)
+      (item.groupName || '').toLowerCase().includes(kw) || 
+      (item.groupCode || '').toLowerCase().includes(kw)
     );
   }
 
@@ -184,7 +184,7 @@ const fetchAppSystemList = async () => {
   }
 };
 
-// 获取节点组列表
+// 获取节点组列表 (真实后端接口)
 const fetchNodeGroupList = async () => {
   loading.value = true;
   try {
@@ -205,6 +205,12 @@ const getAppSystemName = (appSystemId: number) => {
 
 // 新增节点组
 const handleAdd = () => {
+  // 如果还没有任何应用系统，提示用户先添加
+  if (appSystemList.value.length === 0) {
+    message.error('目前没有应用系统，请先添加应用系统');
+    return;
+  }
+
   isEdit.value = false;
   currentId.value = null;
 
