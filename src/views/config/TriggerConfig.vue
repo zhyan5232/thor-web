@@ -1,5 +1,13 @@
 <template>
-  <div>
+  <a-form :model="form" layout="vertical">
+    <!-- 执行方式 -->
+    <a-form-item label="执行方式" required>
+      <a-select v-model:value="form.execType" @change="onExecTypeChange">
+        <a-select-option value="执行时间">执行时间</a-select-option>
+        <a-select-option value="间隔时间">间隔时间</a-select-option>
+      </a-select>
+    </a-form-item>
+
     <!-- 执行时间模式 -->
     <a-row v-if="form.execType === '执行时间'" :gutter="16">
       <a-col :span="12">
@@ -18,7 +26,7 @@
     <a-row v-else :gutter="16">
       <a-col :span="8">
         <a-form-item label="间隔时间" required>
-          <a-input-number v-model:value="form.intervalValue" :min="0" style="width:100%" @change="generateCron" />
+          <a-input-number v-model:value="form.intervalValue" :min="1" style="width:100%" @change="generateCron" />
         </a-form-item>
       </a-col>
       <a-col :span="8">
@@ -31,37 +39,61 @@
         </a-form-item>
       </a-col>
     </a-row>
-  </div>
+
+    <!-- Cron 表达式预览 -->
+    <a-form-item label="Cron 表达式">
+      <a-input v-model:value="form.cronExpression" disabled />
+    </a-form-item>
+
+    <a-form-item label="描述">
+      <a-textarea v-model:value="form.description" :rows="3" />
+    </a-form-item>
+  </a-form>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { message } from 'ant-design-vue';
-
-// TODO: 完整的 form、methods、generateCron 等逻辑需要从你本地最新版本补充
-// 这里保留基本结构以便编译通过
+import { reactive } from 'vue';
 
 const form = reactive({
   execType: '执行时间',
-  execTime: '',
+  execTime: '09:00:00',
   intervalValue: 1,
-  intervalUnit: '分'
+  intervalUnit: '分',
+  cronExpression: '',
+  description: ''
 });
-
-function generateCron() {
-  // TODO: 实现 cron 生成逻辑
-  console.log('generateCron called');
-}
 
 function onExecTypeChange() {
-  // TODO: 重置相关字段
+  form.cronExpression = '';
+  if (form.execType === '执行时间') {
+    form.intervalValue = 1;
+    form.intervalUnit = '分';
+  } else {
+    form.execTime = '';
+  }
+  generateCron();
 }
 
-onMounted(() => {
-  // 初始化逻辑
-});
-</script>
+function generateCron() {
+  if (form.execType === '执行时间' && form.execTime) {
+    const [hour, minute, second] = form.execTime.split(':');
+    form.cronExpression = `${second} ${minute} ${hour} * * ?`;
+  } else if (form.execType === '间隔时间' && form.intervalValue && form.intervalUnit) {
+    let cron = '';
+    const value = form.intervalValue;
+    if (form.intervalUnit === '秒') {
+      cron = `0/${value} * * * * ?`;
+    } else if (form.intervalUnit === '分') {
+      cron = `0 0/${value} * * * ?`;
+    } else if (form.intervalUnit === '时') {
+      cron = `0 0 0/${value} * * ?`;
+    }
+    form.cronExpression = cron;
+  }
+}
 
-<style scoped>
-/* 样式可后续补充 */
-</style>
+// 初始化生成一次
+setTimeout(() => {
+  generateCron();
+}, 100);
+</script>
