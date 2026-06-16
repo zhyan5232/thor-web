@@ -11,13 +11,13 @@
       </a-button>
     </div>
 
-    <!-- 应用系统筛选 -->
+    <!-- 筛选区 -->
     <div class="mb-4 flex items-center gap-4">
       <span class="text-sm text-slate-600">所属应用系统：</span>
       <a-select
         v-model:value="selectedAppSystemId"
         placeholder="全部应用系统"
-        style="width: 240px"
+        style="width: 280px"
         allow-clear
         @change="fetchNodeGroupList"
       >
@@ -25,13 +25,21 @@
           {{ app.appName }} ({{ app.appCode }})
         </a-select-option>
       </a-select>
+
+      <a-input-search
+        v-model:value="searchKeyword"
+        placeholder="输入节点组名称搜索"
+        allow-clear
+        style="width: 260px"
+        @search="fetchNodeGroupList"
+      />
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-100">
       <div class="p-6">
         <a-table
           :columns="columns"
-          :data-source="nodeGroupList"
+          :data-source="filteredNodeGroups"
           :loading="loading"
           :pagination="{ pageSize: 10 }"
           size="middle"
@@ -42,6 +50,11 @@
                 {{ record.status === 1 ? '启用' : '停用' }}
               </a-tag>
             </template>
+
+            <template v-if="column.key === 'appSystem'">
+              {{ getAppSystemName(record.appSystemId) }}
+            </template>
+
             <template v-if="column.key === 'action'">
               <div class="flex gap-3">
                 <a @click="handleEdit(record)">编辑</a>
@@ -103,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { message } from 'ant-design-vue';
 import { PlusOutlined } from '@ant-design/icons-vue';
 import axios from 'axios';
@@ -113,6 +126,7 @@ const API_BASE = 'http://localhost:8080/api';
 
 // 表格列定义
 const columns = [
+  { title: '所属应用系统', key: 'appSystem', width: 200 },
   { title: '节点组编码', dataIndex: 'groupCode', key: 'groupCode', width: 160 },
   { title: '节点组名称', dataIndex: 'groupName', key: 'groupName', width: 200 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
@@ -125,6 +139,7 @@ const nodeGroupList = ref<any[]>([]);
 const appSystemList = ref<any[]>([]);
 const loading = ref(false);
 const selectedAppSystemId = ref<number | null>(null);
+const searchKeyword = ref('');
 
 // Drawer 状态
 const drawerVisible = ref(false);
@@ -138,6 +153,25 @@ const form = reactive({
   groupName: '',
   status: 1,
   description: ''
+});
+
+// 计算属性：筛选后的节点组列表
+const filteredNodeGroups = computed(() => {
+  let list = nodeGroupList.value;
+
+  if (selectedAppSystemId.value) {
+    list = list.filter(item => item.appSystemId === selectedAppSystemId.value);
+  }
+
+  if (searchKeyword.value) {
+    const kw = searchKeyword.value.toLowerCase();
+    list = list.filter(item => 
+      item.groupName?.toLowerCase().includes(kw) || 
+      item.groupCode?.toLowerCase().includes(kw)
+    );
+  }
+
+  return list;
 });
 
 // 获取应用系统列表
@@ -154,11 +188,7 @@ const fetchAppSystemList = async () => {
 const fetchNodeGroupList = async () => {
   loading.value = true;
   try {
-    let url = `${API_BASE}/node-group/list`;
-    if (selectedAppSystemId.value) {
-      url += `?appSystemId=${selectedAppSystemId.value}`;
-    }
-    const res = await axios.get(url);
+    const res = await axios.get(`${API_BASE}/node-group/list`);
     nodeGroupList.value = res.data.result || [];
   } catch (error) {
     message.error('获取节点组列表失败');
@@ -167,17 +197,28 @@ const fetchNodeGroupList = async () => {
   }
 };
 
+// 获取应用系统名称
+const getAppSystemName = (appSystemId: number) => {
+  const app = appSystemList.value.find(a => a.id === appSystemId);
+  return app ? `${app.appName} (${app.appCode})` : '-';
+};
+
 // 新增节点组
 const handleAdd = () => {
   isEdit.value = false;
   currentId.value = null;
+
+  // 如果顶部已经选中了应用系统，则自动带入
+  const defaultAppId = selectedAppSystemId.value || null;
+
   Object.assign(form, {
-    appSystemId: selectedAppSystemId.value || null,
+    appSystemId: defaultAppId,
     groupCode: '',
     groupName: '',
     status: 1,
     description: ''
   });
+
   drawerVisible.value = true;
 };
 
